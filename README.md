@@ -1,5 +1,5 @@
-# First Level Documentation
-## _here we go_
+# Challenge Documentation
+## First Level
 
 Setting up a MySQL Replication Cluster along with the exporter service using the Bitnami Mysql package
 

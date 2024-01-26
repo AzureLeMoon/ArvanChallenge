@@ -1,0 +1,6 @@
+- name: Install Elasticsearch
+  block:
+    - name: Install Elasticsearch package
+      ansible.builtin.apt:
+        name: elasticsearch={{ ELK_stack_version }}
+        state: present

@@ -1,0 +1,589 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: arvandb-mysql
+  namespace: arvanchallenge
+  labels:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/version: 8.0.36
+    helm.sh/chart: mysql-9.18.0
+automountServiceAccountToken: false
+secrets:
+  - name: arvandb-mysql
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: arvandb-mysql
+  namespace: arvanchallenge
+  labels:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/version: 8.0.36
+    helm.sh/chart: mysql-9.18.0
+type: Opaque
+data:
+  mysql-root-password: MTIzNDU2
+  mysql-password: MTIzNDU2
+  mysql-replication-password: MTIzNDU2
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: arvandb-mysql-primary
+  namespace: arvanchallenge
+  labels:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/version: 8.0.36
+    helm.sh/chart: mysql-9.18.0
+    app.kubernetes.io/component: primary
+data:
+  my.cnf: |-
+    [mysqld]
+    default_authentication_plugin=mysql_native_password
+    skip-name-resolve
+    explicit_defaults_for_timestamp
+    basedir=/opt/bitnami/mysql
+    plugin_dir=/opt/bitnami/mysql/lib/plugin
+    port=3306
+    socket=/opt/bitnami/mysql/tmp/mysql.sock
+    datadir=/bitnami/mysql/data
+    tmpdir=/opt/bitnami/mysql/tmp
+    max_allowed_packet=16M
+    bind-address=*
+    pid-file=/opt/bitnami/mysql/tmp/mysqld.pid
+    log-error=/opt/bitnami/mysql/logs/mysqld.log
+    character-set-server=UTF8
+    slow_query_log=0
+    long_query_time=10.0
+
+    [client]
+    port=3306
+    socket=/opt/bitnami/mysql/tmp/mysql.sock
+    default-character-set=UTF8
+    plugin_dir=/opt/bitnami/mysql/lib/plugin
+
+    [manager]
+    port=3306
+    socket=/opt/bitnami/mysql/tmp/mysql.sock
+    pid-file=/opt/bitnami/mysql/tmp/mysqld.pid
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: arvandb-mysql-secondary
+  namespace: arvanchallenge
+  labels:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/version: 8.0.36
+    helm.sh/chart: mysql-9.18.0
+    app.kubernetes.io/component: secondary
+data:
+  my.cnf: |-
+    [mysqld]
+    default_authentication_plugin=mysql_native_password
+    skip-name-resolve
+    explicit_defaults_for_timestamp
+    basedir=/opt/bitnami/mysql
+    plugin_dir=/opt/bitnami/mysql/lib/plugin
+    port=3306
+    socket=/opt/bitnami/mysql/tmp/mysql.sock
+    datadir=/bitnami/mysql/data
+    tmpdir=/opt/bitnami/mysql/tmp
+    max_allowed_packet=16M
+    bind-address=*
+    pid-file=/opt/bitnami/mysql/tmp/mysqld.pid
+    log-error=/opt/bitnami/mysql/logs/mysqld.log
+    character-set-server=UTF8
+    slow_query_log=0
+    long_query_time=10.0
+
+    [client]
+    port=3306
+    socket=/opt/bitnami/mysql/tmp/mysql.sock
+    default-character-set=UTF8
+    plugin_dir=/opt/bitnami/mysql/lib/plugin
+
+    [manager]
+    port=3306
+    socket=/opt/bitnami/mysql/tmp/mysql.sock
+    pid-file=/opt/bitnami/mysql/tmp/mysqld.pid
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: arvandb-mysql-metrics
+  namespace: arvanchallenge
+  labels:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/version: 8.0.36
+    helm.sh/chart: mysql-9.18.0
+    app.kubernetes.io/component: metrics
+  annotations:
+    prometheus.io/port: "9104"
+    prometheus.io/scrape: "true"
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 9104
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/name: mysql
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: arvandb-mysql-primary-headless
+  namespace: arvanchallenge
+  labels:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/version: 8.0.36
+    helm.sh/chart: mysql-9.18.0
+    app.kubernetes.io/component: primary
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: mysql
+  selector:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/component: primary
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: arvandb-mysql-primary
+  namespace: arvanchallenge
+  labels:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/version: 8.0.36
+    helm.sh/chart: mysql-9.18.0
+    app.kubernetes.io/component: primary
+spec:
+  type: ClusterIP
+  sessionAffinity: None
+  ports:
+    - name: mysql
+      port: 3306
+      protocol: TCP
+      targetPort: mysql
+      nodePort: null
+  selector:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/component: primary
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: arvandb-mysql-secondary-headless
+  namespace: arvanchallenge
+  labels:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/version: 8.0.36
+    helm.sh/chart: mysql-9.18.0
+    app.kubernetes.io/component: secondary
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: mysql
+  selector:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/component: secondary
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: arvandb-mysql-secondary
+  namespace: arvanchallenge
+  labels:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/version: 8.0.36
+    helm.sh/chart: mysql-9.18.0
+    app.kubernetes.io/component: secondary
+spec:
+  type: ClusterIP
+  sessionAffinity: None
+  ports:
+    - name: mysql
+      port: 3306
+      protocol: TCP
+      targetPort: mysql
+      nodePort: null
+  selector:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/component: secondary
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: arvandb-mysql-primary
+  namespace: arvanchallenge
+  labels:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/version: 8.0.36
+    helm.sh/chart: mysql-9.18.0
+    app.kubernetes.io/component: primary
+spec:
+  replicas: 1
+  podManagementPolicy: ""
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: arvandb
+      app.kubernetes.io/name: mysql
+      app.kubernetes.io/component: primary
+  serviceName: arvandb-mysql-primary
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/configuration: 2688c511fffe3429037df6855884a0838cf3dce40e2767364a7b05627e39c3d9
+      labels:
+        app.kubernetes.io/instance: arvandb
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: mysql
+        app.kubernetes.io/version: 8.0.36
+        helm.sh/chart: mysql-9.18.0
+        app.kubernetes.io/component: primary
+    spec:
+      serviceAccountName: arvandb-mysql
+      automountServiceAccountToken: false
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/cloud-container-g2
+                    operator: In
+                    values:
+                      - "true"
+      tolerations:
+        - effect: NoSchedule
+          key: role
+          operator: Equal
+          value: cloud-container-g2
+      securityContext:
+        fsGroup: 1001
+        fsGroupChangePolicy: Always
+        supplementalGroups: []
+        sysctls: []
+      initContainers: null
+      containers:
+        - name: mysql
+          image: docker.io/bitnami/mysql:8.0.36-debian-11-r0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 1001
+            seLinuxOptions: {}
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: BITNAMI_DEBUG
+              value: "false"
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: arvandb-mysql
+                  key: mysql-root-password
+            - name: MYSQL_USER
+              value: testuser
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: arvandb-mysql
+                  key: mysql-password
+            - name: MYSQL_DATABASE
+              value: my_database
+            - name: MYSQL_REPLICATION_MODE
+              value: master
+            - name: MYSQL_REPLICATION_USER
+              value: replicator
+            - name: MYSQL_REPLICATION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: arvandb-mysql
+                  key: mysql-replication-password
+          envFrom: null
+          ports:
+            - name: mysql
+              containerPort: 3306
+          resources:
+            limits:
+              cpu: "2"
+              memory: 4Gi
+            requests:
+              cpu: "2"
+              memory: 4Gi
+          volumeMounts:
+            - name: data
+              mountPath: /bitnami/mysql
+            - name: config
+              mountPath: /opt/bitnami/mysql/conf/my.cnf
+              subPath: my.cnf
+        - name: metrics
+          image: docker.io/bitnami/mysqld-exporter:0.15.1-debian-11-r2
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            seLinuxOptions: {}
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: arvandb-mysql
+                  key: mysql-root-password
+          command:
+            - /bin/bash
+            - -ec
+            - >
+              password_aux="${MYSQL_ROOT_PASSWORD:-}"
+
+              if [[ -f "${MYSQL_ROOT_PASSWORD_FILE:-}" ]]; then
+                  password_aux=$(cat "$MYSQL_ROOT_PASSWORD_FILE")
+              fi
+
+              MYSQLD_EXPORTER_PASSWORD=${password_aux} /bin/mysqld_exporter --mysqld.address=localhost:3306 --mysqld.username=root
+          ports:
+            - name: metrics
+              containerPort: 9104
+          resources:
+            limits: {}
+            requests: {}
+      volumes:
+        - name: config
+          configMap:
+            name: arvandb-mysql-primary
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app.kubernetes.io/instance: arvandb
+          app.kubernetes.io/name: mysql
+          app.kubernetes.io/component: primary
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: arvandb-mysql-secondary
+  namespace: arvanchallenge
+  labels:
+    app.kubernetes.io/instance: arvandb
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/version: 8.0.36
+    helm.sh/chart: mysql-9.18.0
+    app.kubernetes.io/component: secondary
+spec:
+  replicas: 1
+  podManagementPolicy: ""
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: arvandb
+      app.kubernetes.io/name: mysql
+      app.kubernetes.io/component: secondary
+  serviceName: arvandb-mysql-secondary
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/configuration: c1d2f1b408e4eb8f5675ae3272515707fba84a13489cbf16902f5a1b5167422c
+      labels:
+        app.kubernetes.io/instance: arvandb
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: mysql
+        app.kubernetes.io/version: 8.0.36
+        helm.sh/chart: mysql-9.18.0
+        app.kubernetes.io/component: secondary
+    spec:
+      serviceAccountName: arvandb-mysql
+      automountServiceAccountToken: false
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/cloud-container-g2
+                    operator: In
+                    values:
+                      - "true"
+      tolerations:
+        - effect: NoSchedule
+          key: role
+          operator: Equal
+          value: cloud-container-g2
+      securityContext:
+        fsGroup: 1001
+        fsGroupChangePolicy: Always
+        supplementalGroups: []
+        sysctls: []
+      initContainers: null
+      containers:
+        - name: mysql
+          image: docker.io/bitnami/mysql:8.0.36-debian-11-r0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 1001
+            seLinuxOptions: {}
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: BITNAMI_DEBUG
+              value: "false"
+            - name: MYSQL_REPLICATION_MODE
+              value: slave
+            - name: MYSQL_MASTER_HOST
+              value: arvandb-mysql-primary
+            - name: MYSQL_MASTER_PORT_NUMBER
+              value: "3306"
+            - name: MYSQL_MASTER_ROOT_USER
+              value: root
+            - name: MYSQL_REPLICATION_USER
+              value: replicator
+            - name: MYSQL_MASTER_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: arvandb-mysql
+                  key: mysql-root-password
+            - name: MYSQL_REPLICATION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: arvandb-mysql
+                  key: mysql-replication-password
+          envFrom: null
+          ports:
+            - name: mysql
+              containerPort: 3306
+          resources:
+            limits:
+              cpu: "2"
+              memory: 4Gi
+            requests:
+              cpu: "2"
+              memory: 4Gi
+          volumeMounts:
+            - name: data
+              mountPath: /bitnami/mysql
+            - name: config
+              mountPath: /opt/bitnami/mysql/conf/my.cnf
+              subPath: my.cnf
+        - name: metrics
+          image: docker.io/bitnami/mysqld-exporter:0.15.1-debian-11-r2
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            seLinuxOptions: {}
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: arvandb-mysql
+                  key: mysql-root-password
+          command:
+            - /bin/bash
+            - -ec
+            - >
+              password_aux="${MYSQL_ROOT_PASSWORD:-}"
+
+              if [[ -f "${MYSQL_ROOT_PASSWORD_FILE:-}" ]]; then
+                  password_aux=$(cat "$MYSQL_ROOT_PASSWORD_FILE")
+              fi
+
+              MYSQLD_EXPORTER_PASSWORD=${password_aux} /bin/mysqld_exporter --mysqld.address=localhost:3306 --mysqld.username=root
+          ports:
+            - name: metrics
+              containerPort: 9104
+          resources:
+            limits: {}
+            requests: {}
+      volumes:
+        - name: config
+          configMap:
+            name: arvandb-mysql-secondary
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app.kubernetes.io/instance: arvandb
+          app.kubernetes.io/name: mysql
+          app.kubernetes.io/component: secondary
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mysql-route-primary
+spec:
+  rules:
+  - host: mysql-reporter-arvanchallenge.apps.ir-thr-ba1.arvancaas.ir
+    http:
+      paths:
+      - backend:
+          service:
+            name: arvandb-mysql-metrics
+            port:
+              number: 9104
+        path: /
+        pathType: Prefix

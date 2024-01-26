@@ -1,0 +1,16 @@
+filebeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: false
+  #reload.period: 10s
+
+filebeat.inputs:
+- type: filestream
+  id: kernel-logs
+  paths:
+    - "/var/log/kern.log"
+    - "/var/log/dmesg"
+  fields:
+    kernel: true
+
+output.logstash:
+  hosts: ['10.0.1.116:5044']

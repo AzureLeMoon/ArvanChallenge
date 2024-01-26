@@ -1,0 +1,4 @@
+---
+- include_tasks: kibana-install.yml
+
+- import_tasks: kibana-configure.yml

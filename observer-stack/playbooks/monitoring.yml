@@ -1,0 +1,19 @@
+- name: Install Observability stack (Prometheus)
+  hosts: Prometheus
+  tags:
+    - monitoring
+    - Prometheus
+  roles:
+    - ../roles/Prometheus
+    - ../roles/FileBeat
+
+- name: Install Observability stack (Grafana)
+  hosts: Grafana
+  tags:
+    - monitoring
+    - Grafana
+  roles:
+    - ../roles/Grafana
+    - ../roles/FileBeat    
+
+

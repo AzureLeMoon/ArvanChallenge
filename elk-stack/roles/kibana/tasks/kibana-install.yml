@@ -1,0 +1,9 @@
+- name: Install kibana
+  block:
+    - name: Install kibana package
+      ansible.builtin.apt:
+        name: kibana
+        state: present
+
+
+

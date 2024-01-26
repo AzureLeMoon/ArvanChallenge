@@ -1,0 +1,29 @@
+- name: Update Elasticsearch Configuration File
+  lineinfile:
+    path: /etc/elasticsearch/elasticsearch.yml
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^network\.host:', line: 'network.host: 127.0.0.1' }
+    - { regexp: '^http\.port:', line: 'http.port: {{ elasticsearch.http_port }}' }
+
+- name: Enable and start Elasticsearch service
+  service:
+    name: elasticsearch
+    state: started
+    enabled: yes
+
+- name: Run Elasticsearch Reset Password Command
+  command: "/usr/share/elasticsearch/bin/elasticsearch-reset-password auto -u elastic"
+  args:
+    stdin: "y"
+  register: reset_password_output
+
+- name: Set fact for reset_password_output
+  set_fact:
+    elastic_password: "{{ reset_password_output.stdout_lines | last | regex_replace('.*New value: (.+)', '\\1') }}"
+
+- name: Elasticsearch User And Password
+  debug:
+    msg: "User : Elastic, Password: {{ elastic_password }}"
+  delegate_to: localhost

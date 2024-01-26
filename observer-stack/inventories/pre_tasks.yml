@@ -1,0 +1,66 @@
+- name: Update nameserver IP address
+  ansible.builtin.lineinfile:
+    path: /etc/resolv.conf
+    regexp: '^nameserver (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$'
+    line: 'nameserver 10.202.10.202'
+
+
+- name: Install apt package requirements
+  become: true
+  become_user: root
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  with_items:
+    - gpg-agent
+    - curl
+    - procps
+    - net-tools
+    - gnupg
+    - rpm
+    - apt-transport-https
+    - ca-certificates
+    - resolvconf
+    
+
+
+- name: Update nameserver IP address
+  ansible.builtin.lineinfile:
+    path: /etc/resolvconf/resolv.conf.d/head
+    regexp: '^nameserver (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$'
+    line: 'nameserver 10.202.10.202'    
+
+- name: restart resolv services
+  service:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - resolvconf  
+    - systemd-resolved
+
+- name: Import docker keyring
+  ansible.builtin.apt_key:
+    state: present
+    url: https://download.docker.com/linux/ubuntu/gpg
+    keyring: /etc/apt/keyrings/docker.gpg
+
+- name: Add docker APT Repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu jammy stable"
+    state: present
+    filename: "docker"    
+    update_cache: true
+
+- name: Install docker
+  become: true
+  become_user: root
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - docker-ce 
+    - docker-ce-cli 
+    - containerd.io 
+    - docker-buildx-plugin 
+    - docker-compose-plugin    

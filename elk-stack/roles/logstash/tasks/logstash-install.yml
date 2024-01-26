@@ -1,0 +1,6 @@
+- name: Install logstash
+  block:
+    - name: Install logstash package
+      ansible.builtin.apt:
+        name: logstash
+        state: present

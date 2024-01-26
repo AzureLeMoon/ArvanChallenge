@@ -1,0 +1,61 @@
+- name: Install Observability stack (Prometheus)
+  hosts: Prometheus
+  become: true
+  tags:
+    - observer-stack
+    - Prometheus
+
+  pre_tasks:  
+    - include_tasks:
+        file : inventories/pre_tasks.yml
+        apply:
+          tags: 
+          - pre_req
+          - observer-stack
+      tags: 
+         - pre_req
+         - observer-stack
+
+  roles:
+    - role: Prometheus
+      tags: 
+        - Prometheus
+        - observer-stack
+        
+    - role: FileBeat
+      tags: 
+        - FileBeat
+        - observer-stack 
+
+  
+- name: Install Observability stack (Grafana)
+  hosts: Grafana
+  become: true
+  tags:
+    - observer-stack
+    - Grafana
+
+  pre_tasks:  
+    - include_tasks:
+        file : inventories/pre_tasks.yml
+        apply:
+          tags: 
+          - pre_req
+          - observer-stack
+      tags: 
+         - pre_req
+         - observer-stack
+
+  roles:
+    - role: Grafana
+      tags: 
+        - Grafana
+        - observer-stack 
+
+    - role: FileBeat
+      tags: 
+        - FileBeat
+        - observer-stack 
+
+
+

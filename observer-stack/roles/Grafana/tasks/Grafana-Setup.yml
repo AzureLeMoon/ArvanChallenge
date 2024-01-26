@@ -1,0 +1,30 @@
+---
+
+- name: Create Folder /srv/grafana if not exist
+  file:
+    path: /srv/grafana
+    mode: 0755
+    state: directory
+
+
+- name: Create grafana configuration files
+  copy:
+    dest: /srv/
+    src: grafana
+    mode: 0644
+
+- name: Create Grafana container
+  docker_container:
+    name: grafana
+    restart_policy: always
+    image: grafana/grafana:{{ grafana_version }}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - /srv/grafana/provisioning:/etc/grafana/provisioning
+      - /srv/grafana/dashboards:/var/lib/grafana/dashboards
+    env:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+    published_ports: "3000:3000"
+
+

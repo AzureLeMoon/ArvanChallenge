@@ -1,0 +1,42 @@
+- name: install elk stack
+  hosts: elk
+  become: True
+  
+  pre_tasks:  
+    - include_tasks:
+        file : inventories/pre_tasks.yml
+        apply:
+          tags: 
+          - pre_req
+          - elkstack
+      tags: 
+         - pre_req
+         - elkstack
+  
+  
+  roles:
+    - role: elasticsearch
+      tags: 
+        - elasticsearch
+        - elkstack
+
+    - role: logstash
+      tags: 
+        - logstash
+        - elkstack 
+    - role: kibana
+      tags: 
+        - kibana
+        - elkstack 
+  
+
+
+  post_tasks:
+    - name: Kibana Dashboard URL
+      debug:
+        msg: "Kibana Dashboard URL : {{ kibana.publicBaseUrl }}"
+      delegate_to: localhost
+    - name: Elasticsearch User And Password
+      debug:
+        msg: "User : Elastic, Password: {{ elastic_password }}"
+      delegate_to: localhost

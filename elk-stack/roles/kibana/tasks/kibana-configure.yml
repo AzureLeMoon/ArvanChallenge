@@ -1,0 +1,26 @@
+- name: Update Elasticsearch Configuration File
+  lineinfile:
+    path: /etc/kibana/kibana.yml
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^server\.port:', line: 'server.port: {{ kibana.server_port }}' }
+    - { regexp: '^server\.host:', line: 'server.host: "{{ kibana.server_host }}"' }
+    - { regexp: '^server\.publicBaseUrl:', line: 'server.publicBaseUrl: {{ kibana.publicBaseUrl }}' }
+
+- name: Run Elasticsearch Create Enrollment Token Command
+  shell: /usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token -s kibana
+  register: token_response
+- name: Extract Token from Response
+  set_fact:
+    enrollment_token: "{{ token_response.stdout }}"
+- name: Run Kibana Enrollment Token Command
+  shell: /usr/share/kibana/bin/kibana-setup --enrollment-token {{ enrollment_token }}
+  args:
+    stdin: "y\n"
+
+- name: Enable and start kibana service
+  service:
+    name: kibana
+    state: started
+    enabled: yes

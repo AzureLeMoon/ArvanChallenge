@@ -1,0 +1,52 @@
+- name: Update nameserver IP address
+  ansible.builtin.lineinfile:
+    path: /etc/resolv.conf
+    regexp: '^nameserver (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$'
+    line: 'nameserver 10.202.10.202'
+    
+
+
+- name: Install apt package requirements
+  become: true
+  become_user: root
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  with_items:
+    - gpg-agent
+    - curl
+    - procps
+    - net-tools
+    - gnupg
+    - rpm
+    - apt-transport-https
+    - resolvconf
+
+
+- name: Update nameserver IP address
+  ansible.builtin.lineinfile:
+    path: /etc/resolvconf/resolv.conf.d/head
+    regexp: '^nameserver (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$'
+    line: 'nameserver 10.202.10.202'    
+
+# - name: restart resolv services
+#   service:
+#     name: "{{ item }}"
+#     state: restarted
+#   with_items:
+#     - resolvconf      
+#     - systemd-resolved
+
+- name: Import elastic keyring
+  ansible.builtin.apt_key:
+    state: present
+    url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    keyring: /usr/share/keyrings/elasticsearch-keyring.gpg
+
+- name: Add ELK APT Repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main"
+    state: present
+    filename: "elastic-8.x"    
+    #update_cache: true

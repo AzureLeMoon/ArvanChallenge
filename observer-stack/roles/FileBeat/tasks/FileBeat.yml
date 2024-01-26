@@ -1,0 +1,27 @@
+---
+
+- name: install filebeat
+  ansible.builtin.apt:
+    deb: https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-8.12.0-amd64.deb
+    only_upgrade: true
+
+- name: deploy filebeat configuration
+  copy:
+    src: filebeat.yml
+    dest: "/etc/filebeat/filebeat.yml"
+
+- name: enable system  plugin filebeat
+  shell: filebeat modules enable system
+
+- name: deploy filebeat configuration
+  copy:
+    src: system.yml
+    dest: "/etc/filebeat/modules.d/system.yml"
+
+
+- name: restart filebeat
+  systemd:
+    daemon_reload: yes
+    name: filebeat
+    state: restarted
+

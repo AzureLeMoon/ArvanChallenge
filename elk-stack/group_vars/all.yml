@@ -1,0 +1,10 @@
+elasticsearch:
+  http_port: 9200
+elastic_package_name : "elasticsearch-8.12.0-amd64.deb"  
+
+ELK_stack_version: 8.12.0
+
+kibana:
+    server_port: 5601
+    server_host: 0.0.0.0
+    publicBaseUrl: "http://94.101.184.16:5601"

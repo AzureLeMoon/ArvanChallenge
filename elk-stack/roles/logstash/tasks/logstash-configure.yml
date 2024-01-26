@@ -1,0 +1,22 @@
+- name: Copy Logstash Output Configuration
+  ansible.builtin.template:
+    src: templates/logstash.conf
+    dest: /etc/logstash/conf.d/beats.conf
+    mode: 0640
+    owner: logstash
+    group: logstash
+
+- name: copy elastic ca cert to logstash dir
+  copy: 
+    src: /etc/elasticsearch/certs/http_ca.crt    
+    dest: /etc/logstash/config/certs/http_ca.crt
+    owner: logstash
+    group: logstash
+    mode: '0644'
+
+
+- name: Enable and start logstash service
+  service:
+    name: logstash
+    state: started
+    enabled: yes

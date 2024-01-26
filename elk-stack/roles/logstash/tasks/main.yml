@@ -1,0 +1,4 @@
+---
+- include_tasks: logstash-install.yml
+
+- import_tasks: logstash-configure.yml

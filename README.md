@@ -278,8 +278,8 @@ now adding the above value file to ArvanCloud Container setup page will generate
     - certain values in this stateful set are required for the replication cluster to work correctly:
       + `MYSQL_REPLICATION_MODE`: which should be set to master in the primary statefulset                          
       + `MYSQL_REPLICATION_USER`: as it was set in the values files       
-      + `MYSQL_REPLICATION_PASSWORD`: which is taken from the secret defined at the begining
-  
+      + `MYSQL_REPLICATION_PASSWORD`: which is taken from the secret defined at the begining     
+     
       ```yaml
         apiVersion: apps/v1
         kind: StatefulSet

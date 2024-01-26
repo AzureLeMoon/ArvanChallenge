@@ -1,0 +1,34 @@
+Tip:
+
+  Watch the deployment status using the command: kubectl get pods -w --namespace arvanchallenge
+
+Services:
+
+  echo Primary: arvandb-mysql-primary.arvanchallenge.svc.cluster.local:3306
+  echo Secondary: arvandb-mysql-secondary.arvanchallenge.svc.cluster.local:3306
+
+Execute the following to get the administrator credentials:
+
+  echo Username: root
+  MYSQL_ROOT_PASSWORD=$(kubectl get secret --namespace arvanchallenge arvandb-mysql -o jsonpath="{.data.mysql-root-password}" | base64 -d)
+
+To connect to your database:
+
+  1. Run a pod that you can use as a client:
+
+      kubectl run arvandb-mysql-client --rm --tty -i --restart='Never' --image  docker.io/bitnami/mysql:8.0.36-debian-11-r0 --namespace arvanchallenge --env MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD --command -- bash
+
+  2. To connect to primary service (read/write):
+
+      mysql -h arvandb-mysql-primary.arvanchallenge.svc.cluster.local -uroot -p"$MYSQL_ROOT_PASSWORD"
+
+  3. To connect to secondary service (read-only):
+
+      mysql -h arvandb-mysql-secondary.arvanchallenge.svc.cluster.local -uroot -p"$MYSQL_ROOT_PASSWORD"
+
+
+
+To access the MySQL Prometheus metrics from outside the cluster execute the following commands:
+
+    kubectl port-forward --namespace arvanchallenge svc/arvandb-mysql-metrics 9104:9104 &
+    curl http://127.0.0.1:9104/metrics

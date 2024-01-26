@@ -1,26 +1,34 @@
-# Challenge Documentation
-## First Level
-
-Setting up a MySQL Replication Cluster along with the exporter serv- [Challenge Documentation](#challenge-documentation)
+# Table of Contents
+- [Table of Contents](#table-of-contents)
 - [Challenge Documentation](#challenge-documentation)
   - [First Level](#first-level)
     - [Step 1: the values file](#step-1-the-values-file)
     - [Step 2: the manifest file](#step-2-the-manifest-file)
     - [Step 3: testing the cluster](#step-3-testing-the-cluster)
-  - [Tech](#tech)
-  - [Installation](#installation)
-  - [Plugins](#plugins)
-  - [Development](#development)
-      - [Building for source](#building-for-source)
-  - [Docker](#docker)
-  - [License](#license)
+  - [Second Level](#second-level)
+    - [Step 1: Setting up Ansible](#step-1-setting-up-ansible)
+    - [Step 2: setting up Prometheus](#step-2-setting-up-prometheus)
+    - [Step 3 : Setting up Grafana](#step-3--setting-up-grafana)
+  - [Third Level](#third-level)
+    - [Step 1: setting up filebeat on the observer nodes](#step-1-setting-up-filebeat-on-the-observer-nodes)
+    - [Step 2: setting up Elasticsearch](#step-2-setting-up-elasticsearch)
+    - [Step 3: Setting up Kibana](#step-3-setting-up-kibana)
+    - [Step 4: Setting up logstash](#step-4-setting-up-logstash)
+
+
+# Challenge Documentation
+## First Level
+
+Setting up a MySQL Replication Cluster along with the exporter server
+
+
 
 Steps:
 
 1. configuring the values files for installing the package
 2. using the generated manifest file 
-2. testing the cluster
-3. ✨Magic ✨
+3. testing the cluster
+4. ✨Magic ✨
 
 ### Step 1: the values file
 
@@ -493,185 +501,415 @@ replacing the root password with the password set in the manifest, this will cre
  we can connect to the database using :
 
  ```
- mysql -h arvandb-mysql-primary.arvanchallenge.svc.cluster.local -uroot -p"$MYSQL_ROOT_PASSWORD"
+ mysql -h arvandb-mysql-primary -uroot -p"$MYSQL_ROOT_PASSWORD"
  ```
 
+we can list the available databases using :
 
-
-- Import a HTML file and watch it magically convert to Markdown
-- Drag and drop images (requires your Dropbox account be linked)
-- Import and save files from GitHub, Dropbox, Google Drive and One Drive
-- Drag and drop markdown and HTML files into Dillinger
-- Export documents as Markdown, HTML and PDF
-
-Markdown is a lightweight markup language based on the formatting conventions
-that people naturally use in email.
-As [John Gruber] writes on the [Markdown site][df1]
-
-> The overriding design goal for Markdown's
-> formatting syntax is to make it as readable
-> as possible. The idea is that a
-> Markdown-formatted document should be
-> publishable as-is, as plain text, without
-> looking like it's been marked up with tags
-> or formatting instructions.
-
-This text you see here is *actually- written in Markdown! To get a feel
-for Markdown's syntax, type some text into the left window and
-watch the results in the right.
-
-## Tech
-
-Dillinger uses a number of open source projects to work properly:
-
-- [AngularJS] - HTML enhanced for web apps!
-- [Ace Editor] - awesome web-based text editor
-- [markdown-it] - Markdown parser done right. Fast and easy to extend.
-- [Twitter Bootstrap] - great UI boilerplate for modern web apps
-- [node.js] - evented I/O for the backend
-- [Express] - fast node.js network app framework [@tjholowaychuk]
-- [Gulp] - the streaming build system
-- [Breakdance](https://breakdance.github.io/breakdance/) - HTML
-to Markdown converter
-- [jQuery] - duh
-
-And of course Dillinger itself is open source with a [public repository][dill]
- on GitHub.
-
-## Installation
-
-Dillinger requires [Node.js](https://nodejs.org/) v10+ to run.
-
-Install the dependencies and devDependencies and start the server.
-
-```sh
-cd dillinger
-npm i
-node app
+```
+SHOW DATABASES;
 ```
 
-For production environments...
+## Second Level
 
-```sh
-npm install --production
-NODE_ENV=production node app
+
+next up is setting up a monitoring cluser stack using [Ansible] to setup [Prometheus] and [Grafana].
+
+first up we are going to need two VMs(Abraks),   
+two small-g2 instances will be enough for this use-case.
+
+the reason for seperating this stack into two parts is that by putting these two VMs into a private network they will be able to communicate with eachother however only the grafana node need to accesible remotely using a public ip address
+
+### Step 1: Setting up Ansible
+
+first we need to [install Ansible]
+
+then we need to make sure we've got an ssh key pair to use for connecting to the VMs, this can be done either automatically when the VM is created in the panel or later on using ssh.
+
+now we need to setup our Ansible Playbook
+
+we are going to make three roles as 
+  + Prometheus: which is going to scrape our mysql-exporter
+  + Grafana: which is going to scrape Prometheus
+  + FileBeat: for the Third Level later on
+
+### Step 2: setting up Prometheus
+
+first up is Prometheus which we are going to configure using the official docker image:
+
+```yaml
+---
+- name: Create Folder /srv/prometheus if not exist
+  file:
+    path: /srv/prometheus
+    mode: 0755
+    state: directory
+
+
+- name: Create prometheus configuration file
+  copy:
+    dest: /srv/prometheus/prometheus.yml
+    src: prometheus_main.yml
+    mode: 0644
+
+
+- name: Create Prometheus container
+  docker_container:
+    name: prometheus
+    restart_policy: always
+    image: prom/prometheus:{{ prometheus_version }}
+    volumes:
+      - /srv/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - /srv/prometheus/prometheus_alerts_rules.yml:/etc/prometheus/prometheus_alerts_rules.yml
+      - prometheus_main_data:/prometheus
+    command: >
+      --config.file=/etc/prometheus/prometheus.yml
+      --storage.tsdb.path=/prometheus
+      --web.console.libraries=/etc/prometheus/console_libraries
+      --web.console.templates=/etc/prometheus/consoles
+      --web.enable-lifecycle
+    published_ports: "9090:9090"
 ```
 
-## Plugins
+the container is going to use the following Prometheus configuration file:
 
-Dillinger is currently extended with the following plugins.
-Instructions on how to use them in your own application are linked below.
+```yaml
+global:
+  scrape_interval: 15s
 
-| Plugin           | README                                    |
-| ---------------- | ----------------------------------------- |
-| Dropbox          | [plugins/dropbox/README.md][PlDb]         |
-| GitHub           | [plugins/github/README.md][PlGh]          |
-| Google Drive     | [plugins/googledrive/README.md][PlGd]     |
-| OneDrive         | [plugins/onedrive/README.md][PlOd]        |
-| Medium           | [plugins/medium/README.md][PlMe]          |
-| Google Analytics | [plugins/googleanalytics/README.md][PlGa] |
+scrape_configs:
+  - job_name: prometheus
+    scrape_interval: 30s
+    static_configs:
+    - targets: ["localhost:9090"]
 
-## Development
-
-Want to contribute? Great!
-
-Dillinger uses Gulp + Webpack for fast developing.
-Make a change in your file and instantaneously see your updates!
-
-Open your favorite Terminal and run these commands.
-
-First Tab:
-
-```sh
-node app
+  - job_name: mysql_primary
+    scrape_interval: 30s
+    static_configs:
+    - targets: ["mysql-reporter-arvanchallenge.apps.ir-thr-ba1.arvancaas.ir"]
 ```
 
-Second Tab:
+the target for scraping mysql is going to be the domain we set up in the ingress rule for the first level.
 
-```sh
-gulp watch
+
+### Step 3 : Setting up Grafana
+
+next up we setup the Grafana container: 
+
+```yaml
+---
+
+- name: Create Folder /srv/grafana if not exist
+  file:
+    path: /srv/grafana
+    mode: 0755
+    state: directory
+
+
+- name: Create grafana configuration files
+  copy:
+    dest: /srv/
+    src: grafana
+    mode: 0644
+
+- name: Create Grafana container
+  docker_container:
+    name: grafana
+    restart_policy: always
+    image: grafana/grafana:{{ grafana_version }}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - /srv/grafana/provisioning:/etc/grafana/provisioning
+      - /srv/grafana/dashboards:/var/lib/grafana/dashboards
+    env:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+    published_ports: "3000:3000"
+
 ```
 
-(optional) Third:
 
-```sh
-karma test
+and we are going to configure grafana as follows:
+
+
+```yaml
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://10.0.1.179:9090
 ```
 
-#### Building for source
 
-For production release:
+the target url here is going to be the private ip for the prometheus VM,  
+this can be set manualy or better yet by using the Arvan API to fetch the VM ip using its name.
 
-```sh
-gulp build --prod
+after running the playbook (which the complete format including the variables and what not is available [here](https://github.com/AzureLeMoon/ArvanChallenge/tree/main/observer-stack) ),   
+the observer stack should be up and running with Grafana being available at `http://{Grafana host ip}:3000`
+
+by logging into grafana we can see that prometheus is sending Data scarped from the mysql cluster.
+
+
+## Third Level
+
+now we are going to set up an elk node to monitor the logs from our observer stack.
+
+### Step 1: setting up filebeat on the observer nodes
+
+in the previous level we defined the FileBeat role for our observer stack, FileBeat is part of the elk stack for gathering various file and logs from the system.
+
+we are going to setup filebeat as follows:
+
+```yaml
+---
+
+- name: install filebeat
+  ansible.builtin.apt:
+    deb: https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-8.12.0-amd64.deb
+    only_upgrade: true
+
+- name: deploy filebeat configuration
+  copy:
+    src: filebeat.yml
+    dest: "/etc/filebeat/filebeat.yml"
+
+- name: enable system  plugin filebeat
+  shell: filebeat modules enable system
+
+- name: deploy filebeat configuration
+  copy:
+    src: system.yml
+    dest: "/etc/filebeat/modules.d/system.yml"
+
+
+- name: restart filebeat
+  systemd:
+    daemon_reload: yes
+    name: filebeat
+    state: restarted
+
 ```
 
-Generating pre-built zip archives for distribution:
+its important to note that when installing componets from the elk stack it's best to have the same version across the stack, in our case its `8.12.0`.
 
-```sh
-gulp build dist --prod
+as for collecting logs using file beat we are going to use the following config:
+
+```yaml
+filebeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: false
+  #reload.period: 10s
+
+filebeat.inputs:
+- type: filestream
+  id: kernel-logs
+  paths:
+    - "/var/log/kern.log"
+    - "/var/log/dmesg"
+  fields:
+    kernel: true
+
+output.logstash:
+  hosts: ['10.0.1.116:5044']
 ```
 
-## Docker
+by using the builtin system plugin we can collect auth and syslog and send them to our logstash endpoint which is in the same private network using its ip adress, again this can be done either manually or preferebly using the ArvanCloud API.
 
-Dillinger is very easy to install and deploy in a Docker container.
 
-By default, the Docker will expose port 8080, so change this within the
-Dockerfile if necessary. When ready, simply use the Dockerfile to
-build the image.
+### Step 2: setting up Elasticsearch
 
-```sh
-cd dillinger
-docker build -t <youruser>/dillinger:${package.json.version} .
-``` 
+Elasticsearch is the core module in our log monitoring stack, we are going to use the official deb package from the elk apt repository to install Elasticsearch
 
-This will create the dillinger image and pull in the necessary dependencies.
-Be sure to swap out `${package.json.version}` with the actual
-version of Dillinger.
+first up we need to do some tasks to set up the requirements:
 
-Once done, run the Docker image and map the port to whatever you wish on
-your host. In this example, we simply map port 8000 of the host to
-port 8080 of the Docker (or whatever port was exposed in the Dockerfile):
+```yaml
+- name: Update nameserver IP address
+  ansible.builtin.lineinfile:
+    path: /etc/resolv.conf
+    regexp: '^nameserver (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$'
+    line: 'nameserver 10.202.10.202'
+    
 
-```sh
-docker run -d -p 8000:8080 --restart=always --cap-add=SYS_ADMIN --name=dillinger <youruser>/dillinger:${package.json.version}
+
+- name: Install apt package requirements
+  become: true
+  become_user: root
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  with_items:
+    - gpg-agent
+    - curl
+    - procps
+    - net-tools
+    - gnupg
+    - rpm
+    - apt-transport-https
+    - resolvconf
+
+
+- name: Update nameserver IP address
+  ansible.builtin.lineinfile:
+    path: /etc/resolvconf/resolv.conf.d/head
+    regexp: '^nameserver (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$'
+    line: 'nameserver 10.202.10.202'    
+
+
+
+- name: Import elastic keyring
+  ansible.builtin.apt_key:
+    state: present
+    url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    keyring: /usr/share/keyrings/elasticsearch-keyring.gpg
+
+- name: Add ELK APT Repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main"
+    state: present
+    filename: "elastic-8.x"    
+    #update_cache: true
 ```
 
-> Note: `--capt-add=SYS-ADMIN` is required for PDF rendering.
+these tasks include setting up an anti sanction solution to bypass geological limitaions,  
+and then using the keyring from elk to sign our apt repository to be able to install all the elk components we are going to need.
 
-Verify the deployment by navigating to your server address in
-your preferred browser.
+installing elastic is easy now using:
 
-```sh
-127.0.0.1:8000
+```yaml
+- name: Install Elasticsearch
+  block:
+    - name: Install Elasticsearch package
+      ansible.builtin.apt:
+        name: elasticsearch={{ ELK_stack_version }}
+        state: present
 ```
 
-## License
+with the version being `8.12.0` as stated before.
 
-MIT
+we are not going to make any changes to the default elastisearch configuration.
 
-**Free Software, Hell Yeah!**
+### Step 3: Setting up Kibana
+
+next up is kibana which is the UI on top of elasticsearch to ease management and provide data visualizations.
+
+kibana can be installed same as Elasticsearch.
+
+as for configuring it:
+
+```yaml
+- name: Update Elasticsearch Configuration File
+  lineinfile:
+    path: /etc/kibana/kibana.yml
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^server\.port:', line: 'server.port: {{ kibana.server_port }}' }
+    - { regexp: '^server\.host:', line: 'server.host: "{{ kibana.server_host }}"' }
+    - { regexp: '^server\.publicBaseUrl:', line: 'server.publicBaseUrl: {{ kibana.publicBaseUrl }}' }
+
+- name: Run Elasticsearch Create Enrollment Token Command
+  shell: /usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token -s kibana
+  register: token_response
+- name: Extract Token from Response
+  set_fact:
+    enrollment_token: "{{ token_response.stdout }}"
+- name: Run Kibana Enrollment Token Command
+  shell: /usr/share/kibana/bin/kibana-setup --enrollment-token {{ enrollment_token }}
+  args:
+    stdin: "y\n"
+
+- name: Enable and start kibana service
+  service:
+    name: kibana
+    state: started
+    enabled: yes
+```
+
+we are going to use the enrollment token generated by elastic search to connect our kibana node to the elastic service.
+
+
+
+### Step 4: Setting up logstash
+
+
+logstash is the log gathering and filtering pipeline which sends the logs into elastic search to be managed and indexed.
+
+we are going to configure logstash to connect to our elastic service securely using the ca-cert generated by elastic:
+
+```yaml
+- name: Copy Logstash Output Configuration
+  ansible.builtin.template:
+    src: templates/logstash.conf
+    dest: /etc/logstash/conf.d/beats.conf
+    mode: 0640
+    owner: logstash
+    group: logstash
+
+- name: copy elastic ca cert to logstash dir
+  copy: 
+    src: /etc/elasticsearch/certs/http_ca.crt    
+    dest: /etc/logstash/config/certs/http_ca.crt
+    owner: logstash
+    group: logstash
+    mode: '0644'
+
+- name: Enable and start logstash service
+  service:
+    name: logstash
+    state: started
+    enabled: yes
+```
+
+and we are going to collect and filter the logs sent by our observer stack as below:
+
+```c
+input {
+  beats {
+    port => 5044
+  }
+}
+
+filter {
+  if [@metadata][beat] == "filebeat" {
+    if [fields][kernel] == "true" {
+      mutate { add_field => { "[@metadata][index]" => "kernel-%{[host][name]}" } }
+    } else if [event][dataset] == "system.syslog" {
+      mutate { add_field => { "[@metadata][index]" => "syslog-%{[host][name]}" } }
+    } else if [event][dataset] == "system.auth" {
+      mutate { add_field => { "[@metadata][index]" => "auth-%{[host][name]}" } }
+    }
+  }
+}
+
+output {
+  if [@metadata][beat] in ["heartbeat", "metricbeat", "filebeat"] {
+    elasticsearch {
+      hosts => ["https://127.0.0.1:9200"]
+      user => "elastic"
+      password => "{{ elastic_password }}"
+      ssl_certificate_authorities => "/etc/logstash/config/certs/http_ca.crt"
+      index => "%{[@metadata][index]}"
+    }
+  }
+}
+
+```
+
+this configuration listens on port 5044 for beats type log inputs and then filters our kernel,Auth and syslog into seperate indexes marked by the host it was collected from.
+
+
+
+
 
 [//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job. There is no need to format nicely because it shouldn't be seen. Thanks SO - http://stackoverflow.com/questions/4823468/store-comments-in-markdown-syntax)
 
-   [dill]: <https://github.com/joemccann/dillinger>
+ 
    [manifest-file]: <https://github.com/AzureLeMoon/ArvanChallenge/blob/main/MySql%20Cluster/manifest.yml>
-   [john gruber]: <http://daringfireball.net>
-   [df1]: <http://daringfireball.net/projects/markdown/>
-   [markdown-it]: <https://github.com/markdown-it/markdown-it>
-   [Ace Editor]: <http://ace.ajax.org>
-   [node.js]: <http://nodejs.org>
-   [Twitter Bootstrap]: <http://twitter.github.com/bootstrap/>
-   [jQuery]: <http://jquery.com>
-   [@tjholowaychuk]: <http://twitter.com/tjholowaychuk>
-   [express]: <http://expressjs.com>
-   [AngularJS]: <http://angularjs.org>
-   [Gulp]: <http://gulpjs.com>
-
-   [PlDb]: <https://github.com/joemccann/dillinger/tree/master/plugins/dropbox/README.md>
-   [PlGh]: <https://github.com/joemccann/dillinger/tree/master/plugins/github/README.md>
-   [PlGd]: <https://github.com/joemccann/dillinger/tree/master/plugins/googledrive/README.md>
-   [PlOd]: <https://github.com/joemccann/dillinger/tree/master/plugins/onedrive/README.md>
-   [PlMe]: <https://github.com/joemccann/dillinger/tree/master/plugins/medium/README.md>
-   [PlGa]: <https://github.com/RahulHP/dillinger/blob/master/plugins/googleanalytics/README.md>
+   [Ansible]: <https://www.ansible.com/>
+   [Prometheus]: <https://prometheus.io/>
+   [Grafana]: <https://grafana.com/>
+   [install Ansible]: <https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#installing-and-upgrading-ansible-with-pip>
 

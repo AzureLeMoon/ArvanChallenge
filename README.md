@@ -28,7 +28,6 @@ Steps:
 1. configuring the values files for installing the package
 2. using the generated manifest file 
 3. testing the cluster
-4. ✨Magic ✨
 
 ### Step 1: the values file
 
